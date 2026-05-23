@@ -11,9 +11,9 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [searchMode, setSearchMode] = useState("pdf");
   const recognitionRef = useRef(null);
 
-  // Upload PDF
   const uploadPDF = async () => {
     if (!file) return;
     setUploading(true);
@@ -33,30 +33,29 @@ export default function Home() {
     setUploading(false);
   };
 
-  // Ask Question
   const askQuestion = async () => {
     if (!question) return;
     setLoading(true);
     setAnswer("");
     try {
-      const res = await fetch(`${API}/ask`, {
+      const endpoint = searchMode === "pdf" ? "/ask" : "/ask-groq";
+      const res = await fetch(`${API}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
       setAnswer(data.answer);
-      speakAnswer(data.answer); // auto speak answer
+      speakAnswer(data.answer);
     } catch (err) {
       setAnswer("Error getting answer. Try again.");
     }
     setLoading(false);
   };
 
-  // Voice Input
   const startListening = () => {
     if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-      alert("Voice input not supported in this browser. Use Chrome.");
+      alert("Voice input not supported. Please use Chrome.");
       return;
     }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -64,7 +63,6 @@ export default function Home() {
     recognition.lang = "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
-
     recognition.onstart = () => setListening(true);
     recognition.onend = () => setListening(false);
     recognition.onresult = (event) => {
@@ -72,7 +70,6 @@ export default function Home() {
       setQuestion(transcript);
     };
     recognition.onerror = () => setListening(false);
-
     recognitionRef.current = recognition;
     recognition.start();
   };
@@ -82,7 +79,6 @@ export default function Home() {
     setListening(false);
   };
 
-  // Voice Output
   const speakAnswer = (text) => {
     if (!text) return;
     window.speechSynthesis.cancel();
@@ -103,6 +99,8 @@ export default function Home() {
   return (
     <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", padding: "2rem" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+
+        {/* Header */}
         <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
           📄 PDF Chat AI
         </h1>
@@ -134,6 +132,24 @@ export default function Home() {
           >
             {uploading ? "⏳ Uploading..." : "⬆️ Upload PDF"}
           </button>
+
+          {/* Upload Progress */}
+          {uploading && (
+            <div style={{ marginTop: "1rem" }}>
+              <p style={{ color: "#f59e0b" }}>⏳ Processing PDF... this may take 1-2 minutes for large files.</p>
+              <div style={{ width: "100%", height: "4px", background: "#333", borderRadius: "2px", marginTop: "0.5rem", overflow: "hidden" }}>
+                <div style={{
+                  height: "100%",
+                  background: "#2563eb",
+                  borderRadius: "2px",
+                  animation: "loading 2s infinite",
+                  width: "40%"
+                }} />
+              </div>
+              <style>{`@keyframes loading { 0% { transform: translateX(-100%) } 100% { transform: translateX(350%) } }`}</style>
+            </div>
+          )}
+
           {uploaded && (
             <p style={{ color: "#4ade80", marginTop: "0.75rem" }}>✅ PDF uploaded and ready!</p>
           )}
@@ -143,6 +159,52 @@ export default function Home() {
         <div style={{ background: "#111", borderRadius: "12px", padding: "1.5rem", border: "1px solid #222" }}>
           <h2 style={{ marginBottom: "1rem" }}>2. Ask a Question</h2>
 
+          {/* Search Mode Toggle */}
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+            <button
+              onClick={() => setSearchMode("pdf")}
+              style={{
+                flex: 1,
+                padding: "0.6rem",
+                borderRadius: "8px",
+                border: "2px solid",
+                borderColor: searchMode === "pdf" ? "#2563eb" : "#333",
+                background: searchMode === "pdf" ? "#1e3a6e" : "transparent",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: searchMode === "pdf" ? "bold" : "normal",
+                fontSize: "0.9rem"
+              }}
+            >
+              📄 Search My PDF
+            </button>
+            <button
+              onClick={() => setSearchMode("groq")}
+              style={{
+                flex: 1,
+                padding: "0.6rem",
+                borderRadius: "8px",
+                border: "2px solid",
+                borderColor: searchMode === "groq" ? "#7c3aed" : "#333",
+                background: searchMode === "groq" ? "#3b0764" : "transparent",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: searchMode === "groq" ? "bold" : "normal",
+                fontSize: "0.9rem"
+              }}
+            >
+              🌐 Search Groq AI
+            </button>
+          </div>
+
+          {/* Search mode hint */}
+          <p style={{ color: "#666", fontSize: "0.8rem", marginBottom: "1rem" }}>
+            {searchMode === "pdf"
+              ? "📄 Answers will come from your uploaded PDF only"
+              : "🌐 Answers will come from Groq AI general knowledge"}
+          </p>
+
+          {/* Input + Mic */}
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             <input
               type="text"
@@ -160,7 +222,6 @@ export default function Home() {
                 fontSize: "1rem"
               }}
             />
-            {/* Voice Input Button */}
             <button
               onClick={listening ? stopListening : startListening}
               title="Voice Input"
@@ -182,21 +243,28 @@ export default function Home() {
             <p style={{ color: "#a78bfa", marginBottom: "1rem" }}>🎤 Listening... speak now</p>
           )}
 
+          {/* Ask Button + Stop Speaking */}
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
               onClick={askQuestion}
-              disabled={loading || !uploaded || !question}
+              disabled={loading || (searchMode === "pdf" && !uploaded) || !question}
               style={{
-                background: !loading && uploaded && question ? "#16a34a" : "#14532d",
+                background: !loading && (searchMode === "groq" || uploaded) && question
+                  ? searchMode === "pdf" ? "#16a34a" : "#7c3aed"
+                  : "#1a1a1a",
                 color: "white",
                 padding: "0.6rem 1.5rem",
                 borderRadius: "8px",
                 border: "none",
-                cursor: !loading && uploaded && question ? "pointer" : "not-allowed",
+                cursor: "pointer",
                 fontSize: "1rem"
               }}
             >
-              {loading ? "⏳ Thinking..." : "🤖 Ask Groq AI"}
+              {loading
+                ? "⏳ Thinking..."
+                : searchMode === "pdf"
+                ? "📄 Ask from PDF"
+                : "🌐 Ask Groq AI"}
             </button>
 
             {speaking && (
@@ -217,10 +285,13 @@ export default function Home() {
             )}
           </div>
 
+          {/* Answer */}
           {answer && (
             <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#1a1a1a", borderRadius: "8px", border: "1px solid #333" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                <p style={{ color: "#4ade80", fontWeight: "bold" }}>Answer:</p>
+                <p style={{ color: searchMode === "pdf" ? "#4ade80" : "#a78bfa", fontWeight: "bold" }}>
+                  {searchMode === "pdf" ? "📄 Answer from PDF:" : "🌐 Answer from Groq AI:"}
+                </p>
                 <button
                   onClick={() => speakAnswer(answer)}
                   title="Read answer aloud"
