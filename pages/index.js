@@ -1,10 +1,5 @@
 import { useState, useRef } from "react";
 
-// Load voices early
-if (typeof window !== "undefined") {
-  window.speechSynthesis.getVoices();
-}
-
 const API = "https://ai-engineer-production-1b5a.up.railway.app";
 
 export default function Home() {
@@ -18,6 +13,23 @@ export default function Home() {
   const [speaking, setSpeaking] = useState(false);
   const [searchMode, setSearchMode] = useState("pdf");
   const recognitionRef = useRef(null);
+
+  if (typeof window !== "undefined") {
+    window.speechSynthesis.getVoices();
+  }
+
+  // Refresh page
+  const handleRefresh = () => {
+    window.speechSynthesis.cancel();
+    setQuestion("");
+    setAnswer("");
+    setFile(null);
+    setUploaded(false);
+    setUploading(false);
+    setListening(false);
+    setSpeaking(false);
+    setSearchMode("pdf");
+  };
 
   const uploadPDF = async () => {
     if (!file) return;
@@ -84,13 +96,10 @@ export default function Home() {
     setListening(false);
   };
 
-const speakAnswer = (text) => {
+  const speakAnswer = (text) => {
     if (!text) return;
     window.speechSynthesis.cancel();
-
-    // Split into smaller sentences for smoother speech
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    
     let index = 0;
     const speakNext = () => {
       if (index >= sentences.length) {
@@ -99,33 +108,24 @@ const speakAnswer = (text) => {
       }
       const utterance = new SpeechSynthesisUtterance(sentences[index].trim());
       utterance.lang = "en-US";
-      utterance.rate = 0.9;   // slightly slower = clearer
+      utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.volume = 1;
-      
-      // Pick a clear voice if available
       const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(v => 
-        v.name.includes("Google US English") || 
+      const preferred = voices.find(v =>
+        v.name.includes("Google US English") ||
         v.name.includes("Microsoft David") ||
         v.name.includes("Microsoft Zira")
       );
       if (preferred) utterance.voice = preferred;
-
       utterance.onstart = () => setSpeaking(true);
-      utterance.onend = () => {
-        index++;
-        speakNext(); // speak next sentence
-      };
-      utterance.onerror = () => {
-        index++;
-        speakNext();
-      };
+      utterance.onend = () => { index++; speakNext(); };
+      utterance.onerror = () => { index++; speakNext(); };
       window.speechSynthesis.speak(utterance);
     };
-
     speakNext();
   };
+
   const stopSpeaking = () => {
     window.speechSynthesis.cancel();
     setSpeaking(false);
@@ -135,10 +135,30 @@ const speakAnswer = (text) => {
     <main style={{ minHeight: "100vh", background: "#0a0a0a", color: "white", padding: "2rem" }}>
       <div style={{ maxWidth: "700px", margin: "0 auto" }}>
 
-        {/* Header */}
-        <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
-          📄 PDF Chat AI
-        </h1>
+        {/* Header with Refresh Button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <h1 style={{ fontSize: "2rem", fontWeight: "bold" }}>
+            📄 PDF Chat AI
+          </h1>
+          <button
+            onClick={handleRefresh}
+            title="Reset everything"
+            style={{
+              background: "#1a1a1a",
+              border: "1px solid #333",
+              color: "white",
+              padding: "0.5rem 1rem",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem"
+            }}
+          >
+            🔄 Refresh
+          </button>
+        </div>
         <p style={{ color: "#888", marginBottom: "2rem" }}>
           Upload a PDF and ask questions using Groq AI — with voice support!
         </p>
@@ -168,7 +188,6 @@ const speakAnswer = (text) => {
             {uploading ? "⏳ Uploading..." : "⬆️ Upload PDF"}
           </button>
 
-          {/* Upload Progress */}
           {uploading && (
             <div style={{ marginTop: "1rem" }}>
               <p style={{ color: "#f59e0b" }}>⏳ Processing PDF... this may take 1-2 minutes for large files.</p>
@@ -239,38 +258,92 @@ const speakAnswer = (text) => {
               : "🌐 Answers will come from Groq AI general knowledge"}
           </p>
 
-          {/* Input + Mic */}
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-            <input
-              type="text"
+          {/* Multiline Input + Clear + Mic */}
+          <div style={{ position: "relative", marginBottom: "1rem" }}>
+            <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && askQuestion()}
-              placeholder="Type or speak your question..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  askQuestion();
+                }
+              }}
+              placeholder="Type or speak your question... (Shift+Enter for new line)"
+              rows={4}
               style={{
-                flex: 1,
+                width: "100%",
                 background: "#1a1a1a",
                 border: "1px solid #333",
                 color: "white",
                 padding: "0.75rem",
+                paddingRight: "3rem",
                 borderRadius: "8px",
-                fontSize: "1rem"
+                fontSize: "1rem",
+                resize: "vertical",
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+                lineHeight: "1.5"
               }}
             />
+            {/* Clear Button inside textarea */}
+            {question && (
+              <button
+                onClick={() => setQuestion("")}
+                title="Clear input"
+                style={{
+                  position: "absolute",
+                  top: "0.5rem",
+                  right: "0.5rem",
+                  background: "#333",
+                  border: "none",
+                  color: "#aaa",
+                  borderRadius: "50%",
+                  width: "24px",
+                  height: "24px",
+                  cursor: "pointer",
+                  fontSize: "0.8rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Mic + Clear Row */}
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             <button
               onClick={listening ? stopListening : startListening}
               title="Voice Input"
               style={{
                 background: listening ? "#dc2626" : "#7c3aed",
                 color: "white",
-                padding: "0.75rem 1rem",
+                padding: "0.6rem 1rem",
                 borderRadius: "8px",
                 border: "none",
                 cursor: "pointer",
-                fontSize: "1.2rem"
+                fontSize: "1rem"
               }}
             >
-              {listening ? "⏹️" : "🎤"}
+              {listening ? "⏹️ Stop" : "🎤 Speak"}
+            </button>
+            <button
+              onClick={() => { setQuestion(""); setAnswer(""); }}
+              title="Clear all"
+              style={{
+                background: "#333",
+                color: "white",
+                padding: "0.6rem 1rem",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "1rem"
+              }}
+            >
+              🗑️ Clear All
             </button>
           </div>
 
@@ -278,7 +351,7 @@ const speakAnswer = (text) => {
             <p style={{ color: "#a78bfa", marginBottom: "1rem" }}>🎤 Listening... speak now</p>
           )}
 
-          {/* Ask Button + Stop Speaking */}
+          {/* Ask + Stop Speaking */}
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
               onClick={askQuestion}
