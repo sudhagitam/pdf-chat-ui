@@ -1,5 +1,10 @@
 import { useState, useRef } from "react";
 
+// Load voices early
+if (typeof window !== "undefined") {
+  window.speechSynthesis.getVoices();
+}
+
 const API = "https://ai-engineer-production-1b5a.up.railway.app";
 
 export default function Home() {
@@ -79,18 +84,48 @@ export default function Home() {
     setListening(false);
   };
 
-  const speakAnswer = (text) => {
+const speakAnswer = (text) => {
     if (!text) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  };
 
+    // Split into smaller sentences for smoother speech
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    
+    let index = 0;
+    const speakNext = () => {
+      if (index >= sentences.length) {
+        setSpeaking(false);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(sentences[index].trim());
+      utterance.lang = "en-US";
+      utterance.rate = 0.9;   // slightly slower = clearer
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      // Pick a clear voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => 
+        v.name.includes("Google US English") || 
+        v.name.includes("Microsoft David") ||
+        v.name.includes("Microsoft Zira")
+      );
+      if (preferred) utterance.voice = preferred;
+
+      utterance.onstart = () => setSpeaking(true);
+      utterance.onend = () => {
+        index++;
+        speakNext(); // speak next sentence
+      };
+      utterance.onerror = () => {
+        index++;
+        speakNext();
+      };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    speakNext();
+  };
   const stopSpeaking = () => {
     window.speechSynthesis.cancel();
     setSpeaking(false);
