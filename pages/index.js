@@ -167,7 +167,7 @@ export default function Home() {
     try {
       const res  = await fetch(`${API}/trigger-uscis-check`, { method: "POST" });
       const data = await res.json();
-      setAlertStatus("✅ Check triggered! Email sent if new news found.");
+      setAlertStatus("✅ Check triggered! Email sent successfully if new news found.");
     } catch {
       setAlertStatus("❌ Failed to trigger check.");
     }
