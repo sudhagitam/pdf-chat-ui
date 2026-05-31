@@ -163,11 +163,11 @@ export default function Home() {
     setSpeaking(false);
   };
 
-  // ── USCIS Alert Trigger ──────────────────
-  const triggerUscisCheck = async () => {
-    setAlertStatus("⏳ Checking USCIS news...");
+  // ── Google News Alert Trigger ──────────────────
+  const triggerGoogleCheck = async () => {
+    setAlertStatus("⏳ Checking Google news...");
     try {
-      const res  = await fetch(`${API}/trigger-uscis-check`, { method: "POST" });
+      const res  = await fetch(`${API}/trigger-google-check`, { method: "POST" });
       const data = await res.json();
       setAlertStatus("✅ Check triggered! Email sent successfully if new news found.");
     } catch {
@@ -217,17 +217,17 @@ export default function Home() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.4rem" }}>
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {/* USCIS Alert Button */}
+              {/* GOOGLE Alert Button */}
               <button
-                onClick={triggerUscisCheck}
-                title="Check USCIS news now & email alert"
+                onClick={triggerGoogleCheck}
+                title="Check Google news now & email alert"
                 style={{
                   background: "#064e3b", border: "1px solid #10b981",
                   color: "white", padding: "0.5rem 0.8rem",
                   borderRadius: "8px", cursor: "pointer", fontSize: "0.8rem"
                 }}
               >
-                🚨 USCIS Alert
+                🚨 GOOGLE Alert
               </button>
               {/* Refresh Button */}
               <button
@@ -429,7 +429,7 @@ export default function Home() {
               placeholder={
                 searchMode === "pdf" ? "Ask about your PDF... (Enter to send)"
                 : searchMode === "url" ? "Ask about the URL... (Enter to send)"
-                : searchMode === "web" ? "Search the web... e.g. USCIS news today"
+                : searchMode === "web" ? "Search the web... e.g. GOOGLE news today"
                 : "Ask Groq AI anything... (Enter to send)"
               }
               rows={3}
