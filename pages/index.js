@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
-//const API = "https://ai-engineer-production-1b5a.up.railway.app";
-const API = "http://localhost:8000";
+const API = "https://ai-engineer-production-1b5a.up.railway.app";
+//const API = "http://localhost:8000";
 
 export default function Home() {
   const [question, setQuestion]       = useState("");
